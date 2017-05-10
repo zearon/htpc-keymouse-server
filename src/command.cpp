@@ -50,6 +50,9 @@ void execInstruction(int instructionCode, char *instPayload, int payloadLen) {
   case _COMMAND_KEY_PRESS:      // 0x04
     sendKeypressEvent(instPayload);
     break;
+  case _COMMAND_KEY_EVENT:      // 0x09
+    sendKeyEvent(instPayload);
+    break;
   case _COMMAND_MOUSE_MOVE:      // 0x05
     sendMouseMoveEvent(instPayload);
     break;
@@ -120,6 +123,28 @@ static void sendKeypressEvent(const char *payload) {
   // int xdo_send_keysequence_window(const xdo_t *xdo, Window window,
   //                     const char *keysequence, useconds_t delay);
   xdo_send_keysequence_window(xdo, CURRENTWINDOW, payload, 0);
+}
+
+static void sendKeyEvent(const char *payload) {
+  int eventType = * ((int*) payload);  // 1 key_down, 2 key_up
+  eventType = ntohl(eventType);
+  const char *keyText = payload + 4;  
+  const char* action = (eventType == 1) ? "按下键盘按键" : "松开键盘按键" ;
+  logln(action, keyText);
+  /**
+   * Send key release (up) events for the given key sequence.
+   *
+   * @see xdo_send_keysequence_window
+   */
+//   int xdo_send_keysequence_window_up(const xdo_t *xdo, Window window,
+//                          const char *keysequence, useconds_t delay);
+//   int xdo_send_keysequence_window_down(const xdo_t *xdo, Window window,
+//                            const char *keysequence, useconds_t delay);
+  if (eventType == 1) {
+    xdo_send_keysequence_window_down(xdo, CURRENTWINDOW, keyText, 30);
+  } else if (eventType == 2) {
+    xdo_send_keysequence_window_up(xdo, CURRENTWINDOW, keyText, 30);
+  }
 }
 
 static void sendMouseMoveEvent(const char *payload) {  
