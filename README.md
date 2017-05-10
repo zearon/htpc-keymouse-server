@@ -1,4 +1,4 @@
-# htpc-keymouse-client
+# HTPC Keyboard and Mouse Controller - Server
 A keyboard and mouse control application running on ubuntu HTPC (gnome). The Client side application is [here](https://github.com/zearon/htpc-keymouse-client)
 
 
