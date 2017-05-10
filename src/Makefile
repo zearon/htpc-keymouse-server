@@ -2,29 +2,30 @@ CXX? = g++
 CFLAGS=`pkg-config --cflags --libs gtk+-3.0 gthread-2.0` -lxdo -lX11
 #/usr/lib/x86_64-linux-gnu/
 #/usr/lib/x86_64-linux-gnu/
-OBJS=tvAsistant.o gui.o log.o command.o network.o
+OBJDIR=../build
+OBJS=$(OBJDIR)/tvAsistant.o $(OBJDIR)/gui.o $(OBJDIR)/log.o $(OBJDIR)/command.o $(OBJDIR)/network.o
 
 main: $(OBJS)
-	$(CXX) -o tvAsistant $(OBJS) $(CFLAGS)
+	$(CXX) -o $(OBJDIR)/tvAsistant $(OBJS) $(CFLAGS) && echo "*** Application is in build path: $(OBJDIR)"
 	
 # -c directive indicates the compile only compiles but not links.
-tvAsistant.o: tvAsistant.cpp gui.h
-	$(CXX) -c tvAsistant.cpp $(CFLAGS)
+$(OBJDIR)/tvAsistant.o: tvAsistant.cpp gui.h
+	$(CXX) -c -o $(OBJDIR)/tvAsistant.o tvAsistant.cpp $(CFLAGS)
 	
-gui.o: gui.cpp gui.h
-	$(CXX) -c gui.cpp $(CFLAGS)
+$(OBJDIR)/gui.o: gui.cpp gui.h
+	$(CXX) -c -o $(OBJDIR)/gui.o gui.cpp $(CFLAGS)
 
-log.o: log.cpp log.h
-	$(CXX) -c log.cpp $(CFLAGS)
+$(OBJDIR)/log.o: log.cpp log.h
+	$(CXX) -c -o $(OBJDIR)/log.o log.cpp $(CFLAGS)
 	
-command.o: command.cpp command.h log.h
-	$(CXX) -c command.cpp $(CFLAGS)
+$(OBJDIR)/command.o: command.cpp command.h log.h
+	$(CXX) -c -o $(OBJDIR)/command.o command.cpp $(CFLAGS)
 	
-network.o: network.cpp network.h log.h
-	$(CXX) -c network.cpp $(CFLAGS)
+$(OBJDIR)/network.o: network.cpp network.h log.h
+	$(CXX) -c -o $(OBJDIR)/network.o network.cpp $(CFLAGS)
 	
 clean:
-	rm -f tvAsistant $(OBJS)
+	rm -f $(OBJDIR)/tvAsistant $(OBJS)
 
 
 
