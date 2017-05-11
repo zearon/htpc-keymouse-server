@@ -27,8 +27,14 @@ static void init() {
   }
 }
 
+static inline int logAndSendToClient(const std::function<void(std::ostream&)> &callback) {
+  log(callback);
+  sendMsgToClient(callback);
+}
+
 static inline int runSystemCmd(const char *instruction, const char *command) {
-  logln(instruction);
+//   logln(instruction);
+  logAndSendToClient( [instruction] (ostream &os) { os << instruction << endl; } ); 
   system(command);
 }
 
@@ -79,7 +85,7 @@ static void *keypress(void *arg) {
 }
 
 static void sendTextToFocus(const char *text) {
-  logln("输入文本:", text);
+  logAndSendToClient( [text] (ostream &os) { os << "输入文本:" << text << endl; } ); 
   
   GtkClipboard* clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);  
   //logln("clipboard:", (long)clipboard);
@@ -98,7 +104,7 @@ static void quitBrowser() {
 }
 
 static void sendKeypressEvent(const char *payload) {
-  logln("键盘按键:", payload);
+  logAndSendToClient( [payload] (ostream &os) { os << "键盘按键:" << payload << endl; } ); 
   /**
    * Send a keysequence to the specified window.
    *
@@ -130,7 +136,7 @@ static void sendKeyEvent(const char *payload) {
   eventType = ntohl(eventType);
   const char *keyText = payload + 4;  
   const char* action = (eventType == 1) ? "按下键盘按键" : "松开键盘按键" ;
-  logln(action, keyText);
+  logAndSendToClient( [action, keyText] (ostream &os) { os << action << keyText << endl; } ); 
   /**
    * Send key release (up) events for the given key sequence.
    *
@@ -152,9 +158,7 @@ static void sendMouseMoveEvent(const char *payload) {
   int delta_y = * ((int*) (payload + 4));
   delta_x = ntohl(delta_x);
   delta_y = ntohl(delta_y);
-  log("移动鼠标光标 （", delta_x);
-  log(",", delta_y);
-  logln(")");
+  logAndSendToClient( [delta_x, delta_y](ostream &os) { os <<"移动鼠标光标 （" <<delta_x <<", " <<delta_y <<")" <<endl; } ); 
   /**
    * Move the mouse relative to it's current position.
    *
@@ -195,7 +199,7 @@ static void sendMouseClickEvent(const char *payload) {
     return;
   }
   
-  logln("点击鼠标：", getMouseButtonName(button));  
+  logAndSendToClient( [button](ostream &os) { os << "点击鼠标：" << getMouseButtonName(button) << endl; } ); 
   /**
    * Send a mouse press (aka mouse down) for a given button at the current mouse
    * location.
@@ -225,7 +229,7 @@ static void sendMouseDoubleClickEvent(const char *payload) {
     return;
   }
   
-  logln("双击鼠标：", getMouseButtonName(button));  
+  logAndSendToClient( [button](ostream &os) { os << "双击鼠标：" << getMouseButtonName(button) << endl; } );
   /**
    * Send a one or more clicks for a specific mouse button at the current mouse
    * location.
@@ -252,9 +256,8 @@ static void sendMouseEvent(const char *payload) {
     logln("Invalid mouse event code. It should 1 for mouse down or 2 for mouse up");
     return;
   }
-  const char* action = (eventType == 1) ? "按下鼠标" : "松开鼠标" ;  
-  logln(action, getMouseButtonName(button));
-  log( [action,button](ostream &oss) { oss << action << getMouseButtonName(button) << endl; } );
+  const char* action = (eventType == 1) ? "按下鼠标" : "松开鼠标" ;
+  logAndSendToClient( [action,button](ostream &os) { os << action << getMouseButtonName(button) << endl; } );
   /**
    * Send a mouse press (aka mouse down) for a given button at the current mouse
    * location.

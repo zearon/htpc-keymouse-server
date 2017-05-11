@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iostream>
 #include "log.h"
 #include "gui.h"
 
@@ -14,52 +15,49 @@ static void init() {
   }
 }
 
+static void _internal_log(const std::function<void(std::ostream&)> &callback) {
+  init(); 
+  callback(*file);
+  file->flush();
+}
+
 void log(const std::function<void(std::ostream&)> &callback) {
   ostringstream oss;
   callback(oss);
-  *file << oss.str();
-  file->flush();
+  _internal_log( [&] (ostream &os) { os << oss.str(); } );
 }
-/*
+
 void log(const char* str) {
-  init(); 
-  *file <<str;
-  file->flush();
-}
-
-void log(double num) {
-  init(); 
-  *file <<num;
-  file->flush();
-}
-
-void log(const char* str1, const char* str2) {
-  init();
-  *file <<str1 <<" " <<str2;
-  file->flush();
-}
-
-void log(const char* str1, double num1) {
-  init();
-  *file <<str1 <<" " <<num1;
-  file->flush();
+  _internal_log( [=] (ostream &os) { os << str; } );
 }
 
 void logln(const char* str) {
-  init();
-  *file <<str <<endl;
-  file->flush();
+  _internal_log( [=] (ostream &os) { os << str << endl; } );
+}
+
+void log(double num) {
+  _internal_log( [=] (ostream &os) { os << num; } );
+}
+
+void log(const char* str1, const char* str2) {
+  _internal_log( [=] (ostream &os) { os <<str1 <<" " <<str2; } );
 }
 
 void logln(const char* str1, const char* str2) {
-  init();
-  *file <<str1 <<" " <<str2 <<endl;
-  file->flush();
+  _internal_log( [=] (ostream &os) { os <<str1 <<" " <<str2 <<endl; } );
+}
+
+void log(const char* str1, double num1) {
+  _internal_log( [=] (ostream &os) { os <<str1 <<" " <<num1; } );
 }
 
 void logln(const char* str1, double num1) {
-  init();
-  *file <<str1 <<" " <<num1 <<endl;
-  file->flush();
+  _internal_log( [=] (ostream &os) { os <<str1 <<" " <<num1 <<endl; } );
 }
-*/
+
+void logStderr(const std::function<void(std::ostream&)> &callback) {
+  ostringstream oss;
+  callback(oss);
+  cerr << oss.str();
+  _internal_log( [&] (ostream &os) { os << oss.str(); } );
+}

@@ -11,43 +11,67 @@
 #include <arpa/inet.h>
 #include "log.h"
 #include "command.h"
+#include "network.h"
 
 #define MAXSIZE 512
+#define CLIENT_SIZE 10
 
 static pthread_t main_tid; 
 static int sock;
-static struct sockaddr_in clientAddr;
+static struct sockaddr_in clientAddr[CLIENT_SIZE];
+static int clientAddrIndex = -1;
 
 static void *processInstructions(void *arg);
-static int authenticate(char* buffer, int len);
+static int authenticate(sockaddr_in* client, char* buffer, int len);
 
-int startServer(int port) {
+int startServer(const char *host, const char *portStr) {
+  int port = atoi(portStr);
+  if (port <= 0 || port > 65535) {
+    logStderr([portStr](std::ostream &os) { os << "Invalid port number " << portStr << std::endl; } );
+    exit(1);
+  }
+  
   logln("Starting UDP server");
   
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
-  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+//   addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  addr.sin_addr.s_addr = inet_addr(host);
   
   if ( (sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
-    logln("Error when creating socket.");
+//     logln("Error when creating socket.");
+    logStderr([](std::ostream &os) { os << "Error when creating socket." << std::endl; } );
     exit(1);
   }
   if ( bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0 ) {
-    logln("Error occurred when binding socket on port", port);
+//     logln("Error occurred when binding socket on port", port);
+    logStderr([host,port](std::ostream &os) { os << "Error occurred when listening on " << host << ":" << port << std::endl; } );
     exit(1);
   } else {
-    logln("Socket is bound to port", port);
+//     log("Socket is listening on", host);
+//     logln(" to port", port);
+    logStderr([host,port](std::ostream &os) { os << "Socket is listening on " << host << ":" << port << std::endl; } );
   }
     
   if (pthread_create(&main_tid, NULL, processInstructions, NULL)) {
-    logln("Error occurred creating a thread to process network instructions.");
+//     logln("Error occurred creating a thread to process network instructions.");
+    logStderr([](std::ostream &os) { os << "Error occurred creating a thread to process network instructions." << std::endl; } );
     exit(1);
   }
 }
 
 int sendMsgToClient(const char *msg) {
-  sendto(sock, msg, strlen(msg), 0, (struct sockaddr *)&clientAddr, sizeof(clientAddr));
+  sendto(sock, msg, strlen(msg), 0, (struct sockaddr *)(clientAddr + clientAddrIndex), sizeof(*clientAddr));
+//   log( [msg] (std::ostream &os) { os << "Send UDP packet to client " << clientAddrIndex << ": " << msg << std::endl; } );
+}
+
+int sendMsgToClient(const std::function<void(std::ostream&)> &makeMsgCallback) {
+  std::ostringstream oss;
+  makeMsgCallback(oss);
+  std::string msg = oss.str();
+  
+  sendMsgToClient(msg.c_str());
 }
 
 static void *processInstructions(void *arg) {
@@ -55,9 +79,11 @@ static void *processInstructions(void *arg) {
   
   char buffer[MAXSIZE];
   int bytes;
-  socklen_t addrlen = sizeof(clientAddr);
+  socklen_t addrlen = sizeof(*clientAddr);
   while (1) {
-    bytes = recvfrom(sock, buffer, MAXSIZE-1, 0, (struct sockaddr*)&clientAddr, &addrlen);    
+    clientAddrIndex = (clientAddrIndex + 1) % CLIENT_SIZE;
+    bytes = recvfrom(sock, buffer, MAXSIZE-1, 0, 
+      (struct sockaddr*)(clientAddr + clientAddrIndex), &addrlen);    
     if (bytes>0) {
       buffer[bytes] = 0;
 //       log("Data received from", inet_ntoa(clientAddr.sin_addr));   // client IP
@@ -75,7 +101,7 @@ static void *processInstructions(void *arg) {
           authSectionLen = 0; 
         }
         
-        if (!authenticate(buffer+2, authSectionLen)) {
+        if (!authenticate((clientAddr + clientAddrIndex), buffer+2, authSectionLen)) {
           logln("Authentication failed");
           continue;
         } else {
@@ -90,7 +116,8 @@ static void *processInstructions(void *arg) {
   }
 }
 
-static int authenticate(char* buffer, int len) {
+static int authenticate(sockaddr_in* client, char* buffer, int len) {
+//   log( [client] (std::ostream &os) { os << "Request from " << inet_ntoa(client->sin_addr) << std::endl; } );
   if (len <= 0)
     return 1;
   else

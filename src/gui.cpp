@@ -100,12 +100,30 @@ int initGui(int argc, char *argv[]) {
   g_signal_connect(G_OBJECT(openTerminalBtn), "clicked", G_CALLBACK(onOpenTerminalButton),NULL);
   
   statusLabel = (GtkLabel *) gtk_label_new("Log file size: ");  //日志文件大小标签  
-  GtkWidget *refreshLogFileSizeBtn = gtk_button_new_with_label ("R");  //刷新日志文件大小按钮
+  GtkWidget *refreshLogFileSizeBtn = gtk_button_new_with_label ("刷新 | Refresh");  //刷新日志文件大小按钮
   g_signal_connect(G_OBJECT(refreshLogFileSizeBtn), "clicked", G_CALLBACK(onRefreshLogFileSizeBtn),NULL);
   
   GtkWidget *hboxLogFileSize = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);  // 水平布局容器 
   gtk_container_add(GTK_CONTAINER(hboxLogFileSize), (GtkWidget*) statusLabel);
   gtk_container_add(GTK_CONTAINER(hboxLogFileSize), (GtkWidget*) refreshLogFileSizeBtn);
+  
+  // 启动参数
+  char *startupArgs = new char[1000];
+  const char *prefix = "启动参数：";
+  int startupArgsStrOffset = strlen(prefix);
+  strcpy(startupArgs, prefix);
+  if (argc > 1) {
+    for (int argidx = 1; argidx < argc; ++argidx) {      
+      strcpy(startupArgs + startupArgsStrOffset, argv[argidx]);
+      startupArgsStrOffset += strlen(argv[argidx]);
+      strcpy(startupArgs + startupArgsStrOffset, " ");
+      ++startupArgsStrOffset;
+    }
+  } else {
+    strcpy(startupArgs + startupArgsStrOffset, "(默认) -h 0.0.0.0 -p 8888");
+  }
+  GtkWidget *startupArgsLabel = gtk_label_new(startupArgs);  //启动参数标签  
+  delete[] startupArgs;
   
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);  // 垂直布局容器  
   gtk_container_add(GTK_CONTAINER(vbox), (GtkWidget*) scrollwindow);
@@ -113,6 +131,7 @@ int initGui(int argc, char *argv[]) {
   gtk_container_add(GTK_CONTAINER(vbox), clearLogBtn);
   gtk_container_add(GTK_CONTAINER(vbox), openTerminalBtn);
   gtk_container_add(GTK_CONTAINER(vbox), hboxLogFileSize);
+  gtk_container_add(GTK_CONTAINER(vbox), startupArgsLabel);
   gtk_container_add(GTK_CONTAINER(window), vbox);
   
   /*
