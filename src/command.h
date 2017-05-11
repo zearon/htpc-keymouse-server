@@ -10,6 +10,7 @@
 #define _COMMAND_MOUSE_CLICK 0x06
 #define _COMMAND_MOUSE_DOUBLE_CLICK 0x07
 #define _COMMAND_MOUSE_EVENT 0x08
+#define _COMMAND_CHANGE_SOUND_DEVICE 0x0a
 
 void execInstruction(int instructionCode, char *instPayload, int payloadLen);
 
@@ -22,4 +23,5 @@ static void sendMouseMoveEvent(const char *payload);
 static void sendMouseClickEvent(const char *payload);
 static void sendMouseDoubleClickEvent(const char *payload);
 static void sendMouseEvent(const char *payload);
+static void changeSoundDevice(const char *payload);
 #endif

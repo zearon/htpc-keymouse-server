@@ -34,7 +34,7 @@ static inline int logAndSendToClient(const std::function<void(std::ostream&)> &c
 
 static inline int runSystemCmd(const char *instruction, const char *command) {
 //   logln(instruction);
-  logAndSendToClient( [instruction] (ostream &os) { os << instruction << endl; } ); 
+  logAndSendToClient( [instruction,command] (ostream &os) { os << instruction << ": " << command << endl; } ); 
   system(command);
 }
 
@@ -71,6 +71,9 @@ void execInstruction(int instructionCode, char *instPayload, int payloadLen) {
   case _COMMAND_MOUSE_EVENT:    // 0x08
     sendMouseEvent(instPayload);
     break;    
+  case _COMMAND_CHANGE_SOUND_DEVICE:    // 0x0a
+    changeSoundDevice(instPayload);
+    break;    
   default:
     break;
   }
@@ -101,6 +104,16 @@ static void startBrowser() {
 
 static void quitBrowser() {
   runSystemCmd("关闭浏览器", "killall chrome");
+}
+
+static void changeSoundDevice(const char *payload) {
+  int soundCard = * ((int*) payload);
+  soundCard = ntohl(soundCard);
+  const char *outputDevice = payload + 4;
+  ostringstream cmds;
+  cmds << "pacmd set-card-profile " << soundCard << " output:" << outputDevice;
+  string cmd = cmds.str();
+  runSystemCmd("切换声音输出设备", cmd.c_str());
 }
 
 static void sendKeypressEvent(const char *payload) {
