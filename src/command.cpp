@@ -1,21 +1,21 @@
-#include <string.h>
 #include <gtk/gtk.h>
 #include <gtk/gtkclipboard.h>
 #include <arpa/inet.h>
 // libxdo.so is implemented in C.
 //#include <xdo.h>
 extern "C" {
-#include <xdo.h>
+  #include <xdo.h>
 }
 #include <stdlib.h>
 #include <unistd.h>
-#include "log.h"
-
 #include <pthread.h>
 #include <sys/types.h>
 
+#include "log.h"
 #include "command.h"
 #include "network.h"
+
+using namespace std;
 
 static xdo_t *xdo = NULL;
 static pthread_t main_tid; 
@@ -254,6 +254,7 @@ static void sendMouseEvent(const char *payload) {
   }
   const char* action = (eventType == 1) ? "按下鼠标" : "松开鼠标" ;  
   logln(action, getMouseButtonName(button));
+  log( [action,button](ostream &oss) { oss << action << getMouseButtonName(button) << endl; } );
   /**
    * Send a mouse press (aka mouse down) for a given button at the current mouse
    * location.

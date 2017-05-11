@@ -1,12 +1,10 @@
 CXX? = g++
-CFLAGS=`pkg-config --cflags --libs gtk+-3.0 gthread-2.0` -lxdo -lX11
-#/usr/lib/x86_64-linux-gnu/
-#/usr/lib/x86_64-linux-gnu/
+CFLAGS= -std=c++11 `pkg-config --cflags --libs gtk+-3.0 gthread-2.0` -lxdo -lX11
 OBJDIR=../build
 OBJS=$(OBJDIR)/tvAsistant.o $(OBJDIR)/gui.o $(OBJDIR)/log.o $(OBJDIR)/command.o $(OBJDIR)/network.o
 
 main: $(OBJS)
-	$(CXX) -o $(OBJDIR)/tvAsistant $(OBJS) $(CFLAGS) && echo "*** Application is in build path: $(OBJDIR)"
+	$(CXX) -o $(OBJDIR)/tvAsistant $(OBJS) $(CFLAGS) && echo "*** Application is in build path: $(OBJDIR)" && chmod +x $(OBJDIR)/tvAsistant
 	
 # -c directive indicates the compile only compiles but not links.
 $(OBJDIR)/tvAsistant.o: tvAsistant.cpp gui.h

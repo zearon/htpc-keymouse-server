@@ -14,6 +14,13 @@ static void init() {
   }
 }
 
+void log(const std::function<void(std::ostream&)> &callback) {
+  ostringstream oss;
+  callback(oss);
+  *file << oss.str();
+  file->flush();
+}
+/*
 void log(const char* str) {
   init(); 
   *file <<str;
@@ -55,3 +62,4 @@ void logln(const char* str1, double num1) {
   *file <<str1 <<" " <<num1 <<endl;
   file->flush();
 }
+*/
