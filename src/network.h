@@ -6,6 +6,7 @@
 #include <functional>
 
 int startServer(const char *host, const char *portStr);
+int stopServer();
 int sendMsgToClient(const char *msg);
 int sendMsgToClient(const std::function<void(std::ostream&)> &makeMsgCallback);
 

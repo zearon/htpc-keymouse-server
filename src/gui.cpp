@@ -1,11 +1,17 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
+#include <string>
 #include <sys/stat.h> 
+#include <map> 
 #include "gui.h"
+#include "network.h"
+#include "log.h"
 
 #define MESSAGE_LIST_LENGTH 5
 
+static std::map<std::string, char*> *popts;
 static GtkTextView *msgTextView = NULL;
 static GtkTextBuffer *msgTextBuffer = NULL;
 static GtkScrolledWindow *scrollwindow = NULL;
@@ -32,6 +38,13 @@ static void hide_window(GtkWidget *widget,GdkEventWindowState *event,gpointer da
 */
 
 static GtkLabel *statusLabel = NULL; 
+static GtkLabel *wssBlinkLabel = NULL;
+static GtkWidget *wssBlinkBox = NULL;
+
+static void quit() {
+  stopServer();
+  gtk_main_quit();  
+}
 
 /** 更新文件大小显示
  */
@@ -43,20 +56,36 @@ static void updateLogFileSizeDisplay() {
   if (size > 1024) { size /= 1024; unit = "KB"; }
   if (size > 1024) { size /= 1024; unit = "MB"; }
   char buffer[100];
-  sprintf(buffer, "日志文件大小：%.2f%s", size, unit);
+  sprintf(buffer, "    日志文件大小：%.2f%s", size, unit);
   gtk_label_set_text(statusLabel, buffer);
+}
+
+static void onStartWSServerButton(GtkWidget *widget, gpointer data) {
+  std::ostringstream oss;
+  oss << (*popts)["wsexecpath"] << " "
+      << (*popts)["wshost"] << " "
+      << (*popts)["wsport"] << " "
+      << (*popts)["host"] << " "
+      << (*popts)["port"] << " "
+      << "> ./wslog.txt &";
+  
+  std::string cmd = oss.str();
+  logln("Start WebSocket Server:\n  ", cmd.c_str());
+  system(cmd.c_str());
 }
 
 static void onShowLogButton(GtkWidget *widget, gpointer data) {
   printf("Show log\n");
   system("gnome-terminal -x tail -f ./log.txt");
+  system("gnome-terminal -x tail -f ./wslog.txt");
   
   updateLogFileSizeDisplay();
 }
 
 static void onClearLogButton(GtkWidget *widget, gpointer data) {
   printf("Clear log\n");
-  system("echo "" > ./log.txt");
+  system("echo '' > ./log.txt");
+  system("echo '' > ./wslog.txt");
   
   updateLogFileSizeDisplay();
 }
@@ -70,8 +99,9 @@ static void onRefreshLogFileSizeBtn(GtkWidget *widget, gpointer data) {
   updateLogFileSizeDisplay();
 }
 
-int initGui(int argc, char *argv[]) {  
-  gtk_init(&argc, &argv);  
+int initGui(int argc, char *argv[], std::map<std::string, char*> *opts_) { 
+  gtk_init(&argc, &argv);
+  popts = opts_;  
   
   GtkWidget *window;
   window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -79,7 +109,7 @@ int initGui(int argc, char *argv[]) {
   gtk_widget_set_size_request(window, 200, 200);
   gtk_window_set_resizable(GTK_WINDOW(window), TRUE);
   
-  g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(window, "destroy", G_CALLBACK(quit), NULL);
   
   
   msgTextView = (GtkTextView*) gtk_text_view_new();  // 创建文本框
@@ -90,6 +120,13 @@ int initGui(int argc, char *argv[]) {
   scrollwindow = (GtkScrolledWindow*) gtk_scrolled_window_new(NULL, NULL); // 创建滚动窗口
   gtk_container_add(GTK_CONTAINER(scrollwindow), (GtkWidget*) msgTextView);
   
+  GtkWidget *startWSSBtn = gtk_button_new_with_label ("启动WebSocket服务器 | Start WSS Server");  //启动WebSocket服务器按钮
+  g_signal_connect(G_OBJECT(startWSSBtn), "clicked", G_CALLBACK(onStartWSServerButton),NULL);
+  
+  wssBlinkLabel = (GtkLabel *) gtk_label_new("WSS");  //WebSocket服务器Blink标签
+  wssBlinkBox = gtk_event_box_new();
+  gtk_container_add(GTK_CONTAINER(wssBlinkBox), (GtkWidget*) wssBlinkLabel);
+  
   GtkWidget *showLogBtn = gtk_button_new_with_label ("显示日志 | Show Log");  //显示日志按钮
   g_signal_connect(G_OBJECT(showLogBtn), "clicked", G_CALLBACK(onShowLogButton),NULL);
   
@@ -99,11 +136,12 @@ int initGui(int argc, char *argv[]) {
   GtkWidget *openTerminalBtn = gtk_button_new_with_label ("打开终端 | Open Terminal");  //打开终端按钮
   g_signal_connect(G_OBJECT(openTerminalBtn), "clicked", G_CALLBACK(onOpenTerminalButton),NULL);
   
-  statusLabel = (GtkLabel *) gtk_label_new("Log file size: ");  //日志文件大小标签  
+  statusLabel = (GtkLabel *) gtk_label_new("    Log file size: ");  //日志文件大小标签  
   GtkWidget *refreshLogFileSizeBtn = gtk_button_new_with_label ("刷新 | Refresh");  //刷新日志文件大小按钮
   g_signal_connect(G_OBJECT(refreshLogFileSizeBtn), "clicked", G_CALLBACK(onRefreshLogFileSizeBtn),NULL);
   
   GtkWidget *hboxLogFileSize = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);  // 水平布局容器 
+  gtk_container_add(GTK_CONTAINER(hboxLogFileSize), wssBlinkBox);
   gtk_container_add(GTK_CONTAINER(hboxLogFileSize), (GtkWidget*) statusLabel);
   gtk_container_add(GTK_CONTAINER(hboxLogFileSize), (GtkWidget*) refreshLogFileSizeBtn);
   
@@ -112,21 +150,13 @@ int initGui(int argc, char *argv[]) {
   const char *prefix = "启动参数：";
   int startupArgsStrOffset = strlen(prefix);
   strcpy(startupArgs, prefix);
-  if (argc > 1) {
-    for (int argidx = 1; argidx < argc; ++argidx) {      
-      strcpy(startupArgs + startupArgsStrOffset, argv[argidx]);
-      startupArgsStrOffset += strlen(argv[argidx]);
-      strcpy(startupArgs + startupArgsStrOffset, " ");
-      ++startupArgsStrOffset;
-    }
-  } else {
-    strcpy(startupArgs + startupArgsStrOffset, "(默认) -h 0.0.0.0 -p 8888");
-  }
+  strcpy(startupArgs + startupArgsStrOffset, (*popts)["starup-args"]);
   GtkWidget *startupArgsLabel = gtk_label_new(startupArgs);  //启动参数标签  
   delete[] startupArgs;
   
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);  // 垂直布局容器  
   gtk_container_add(GTK_CONTAINER(vbox), (GtkWidget*) scrollwindow);
+  gtk_container_add(GTK_CONTAINER(vbox), startWSSBtn);
   gtk_container_add(GTK_CONTAINER(vbox), showLogBtn);
   gtk_container_add(GTK_CONTAINER(vbox), clearLogBtn);
   gtk_container_add(GTK_CONTAINER(vbox), openTerminalBtn);
@@ -149,6 +179,7 @@ int initGui(int argc, char *argv[]) {
   
   gtk_widget_show_all(window);
   
+  blink(-1);
   updateLogFileSizeDisplay();
   
   gtk_main();
@@ -172,4 +203,28 @@ int appendMessage(const char *msg) {
   }
 */  
   return 0;
+}
+
+static GdkColor red = {0, 0xffff, 0, 0};  
+static GdkColor green = {0, 0, 0xffff, 0};
+static GdkColor yellow = {0, 0xffff, 0xffff, 0};
+static GdkColor bgcolor_gray = {0, 0xf2f2, 0xf1f1, 0xf0f0};  
+
+int blink(int on) {
+  GdkColor *color = on ? &green : &bgcolor_gray;
+  switch (on) {
+    case 0:
+      color = &yellow;
+      break;
+    case 1:
+      color = &green;
+      break;
+    case 2:
+      color = &bgcolor_gray;
+      break;
+    default:
+      color = &red;
+      break;
+  }
+  gtk_widget_modify_bg(wssBlinkBox,GTK_STATE_NORMAL, color);
 }

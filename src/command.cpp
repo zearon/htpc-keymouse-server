@@ -14,6 +14,7 @@ extern "C" {
 #include "log.h"
 #include "command.h"
 #include "network.h"
+#include "gui.h"
 
 using namespace std;
 
@@ -40,7 +41,7 @@ static inline int runSystemCmd(const char *instruction, const char *command) {
 
 void execInstruction(int instructionCode, char *instPayload, int payloadLen) {
 //   log("Execute instruciton:", instructionCode);
-//   log(" with payload:", instPayload);
+//   logln(" with payload:", instPayload);
   init();
   
   switch (instructionCode) {
@@ -73,6 +74,9 @@ void execInstruction(int instructionCode, char *instPayload, int payloadLen) {
     break;    
   case _COMMAND_CHANGE_SOUND_DEVICE:    // 0x0a
     changeSoundDevice(instPayload);
+    break;    
+  case _COMMAND_HEART_BEAT:    // 0xff
+    heartbeat(instPayload);
     break;    
   default:
     break;
@@ -286,4 +290,36 @@ static void sendMouseEvent(const char *payload) {
   } else if (eventType == 2) {
     xdo_mouse_up(xdo, CURRENTWINDOW, button);
   }
+}
+
+static int heartbeatOn = -1;
+static int heartbeatMissed = 0;
+static gint heartbeatSetInactiveStatusIcon(gpointer user_data) {
+  ++heartbeatMissed;
+  if (heartbeatMissed > 5) {    
+    blink(-1); // yellow
+    heartbeatOn = -1;
+    return 0; // terminate this timer.
+  } else {
+    blink(0); // yellow
+    return 1; // 1 for TRUE, which indicates the timer to call this function repeatedly. 
+  }
+}
+
+static gint startHeartbeatSetInactiveStatusIcon(gpointer user_data) {
+  blink(0); // yellow
+  g_timeout_add(1000, GSourceFunc(heartbeatSetInactiveStatusIcon), NULL);
+  return 0; // 0 for FALSE, which indicates a one time timer. 
+}
+
+static void heartbeat(const char *payload){
+  if (heartbeatOn < 0) {
+    // Init 
+    heartbeatMissed = 0;
+    g_timeout_add(500, GSourceFunc(startHeartbeatSetInactiveStatusIcon), NULL);
+  }
+  heartbeatOn = (++heartbeatOn) % 2;
+  --heartbeatMissed;
+  //logln("心跳 ", payload);
+  blink(1);
 }

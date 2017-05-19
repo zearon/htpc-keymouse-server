@@ -11,6 +11,7 @@
 #define _COMMAND_MOUSE_DOUBLE_CLICK 0x07
 #define _COMMAND_MOUSE_EVENT 0x08
 #define _COMMAND_CHANGE_SOUND_DEVICE 0x0a
+#define _COMMAND_HEART_BEAT 0xff
 
 void execInstruction(int instructionCode, char *instPayload, int payloadLen);
 
@@ -24,4 +25,5 @@ static void sendMouseClickEvent(const char *payload);
 static void sendMouseDoubleClickEvent(const char *payload);
 static void sendMouseEvent(const char *payload);
 static void changeSoundDevice(const char *payload);
+static void heartbeat(const char *payload);
 #endif
